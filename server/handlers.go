@@ -2,13 +2,15 @@ package server
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
+//ApplyHandlers apply hadlers for server
 func (serv *Server) ApplyHandlers() {
 	serv.router.Handle("/*", http.FileServer(http.Dir("./web")))
 	serv.router.Get("/socket", serv.socketHandler)
@@ -71,7 +73,7 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("CLSOED")
+	fmt.Println("CLOSED")
 	defer func() {
 		serv.submutex.Lock()
 		delete(serv.subscribers, id)
