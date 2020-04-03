@@ -46,10 +46,6 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 		Type: MTChannels,
 		Data: string(channels),
 	})
-	// serv.submutex.Lock()
-	// serv.subscribers[id] = user
-	// serv.channel.Subscribe(user)
-	// serv.submutex.Unlock()
 
 	for {
 		msg := Message{}
@@ -61,7 +57,7 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if msg.Type == MTJoin {
-			serv.channels[msg.Data].Subscribe(user)
+			serv.channels[msg.Channel].Subscribe(user)
 		}
 
 		if msg.Type == MTPong {
@@ -69,25 +65,22 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if msg.Type == MTMessage {
-			fmt.Println(msg.Data)
-			// serv.submutex.Lock()
-			serv.publisher.Send(msg.Data)
-			// for _, sub := range serv.subscribers {
-			// 	if err := sub(msg.Data); err != nil {
-			// 		log.Fatalf("ws msg subs err: %v", err)
-			// 	}
-			// }
-			// serv.submutex.Unlock()
+			fmt.Println(msg.Data, msg.Channel)
+			serv.publisher.Send(msg.Channel+": "+"("+user.GetID()+") "+msg.Data, msg.Channel)
 		}
+
+		if msg.Type == MTLeave {
+			fmt.Println(msg.Channel)
+			serv.channels[msg.Channel].UnSubscribe(user)
+		}
+
 	}
 
 	fmt.Println("User leaving...")
 	defer func() {
-		// serv.submutex.Lock()
 		for _, v := range serv.channels {
 			v.UnSubscribe(user)
 		}
 		stopchan <- "exit"
-		// serv.submutex.Unlock()
 	}()
 }

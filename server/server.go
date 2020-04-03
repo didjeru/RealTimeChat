@@ -8,9 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//Subscriber func with message
-//type Subscriber func(msg string) error
-
 //Server struct
 type Server struct {
 	router   *chi.Mux
@@ -18,9 +15,6 @@ type Server struct {
 
 	channels  map[string]*event_channel.Channel
 	publisher *event_channel.Publisher
-
-	// submutex *sync.Mutex
-	// subscribers map[string]*User
 }
 
 //New start new server
@@ -47,10 +41,8 @@ func New() *Server {
 	serv := &Server{
 		router:    router,
 		upgrader:  upgrader,
-		channels:  map[string]*event_channel.Channel{"#ch1": ch1, "#ch2": ch2, "#ch3": ch3, "ch4": ch4},
+		channels:  map[string]*event_channel.Channel{"#ch1": ch1, "#ch2": ch2, "#ch3": ch3, "#ch4": ch4},
 		publisher: pub,
-		// submutex:    &sync.Mutex{},
-		// subscribers: map[string]*User{},
 	}
 
 	serv.ApplyHandlers()

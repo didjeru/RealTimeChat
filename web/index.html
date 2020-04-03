@@ -1,73 +1,103 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Real Time Chat</title>
 </head>
+
 <body>
 
-<div>Выберите канал:</div>
-<ul id="channels"></ul>
-<div id="dialog"></div>
-<div id="controls">
-    <input type="text" id="message">
-    <button id="send">SEND</button>
-</div>
+    <div>Выберите канал:</div>
+    <ul id="channels"></ul>
+    <div id="dialog"></div>
+    <div id="controls" style="display: none;">
+        <select id="active_channels"></select>
+        <input type="text" id="message">
+        <button id="send">SEND</button>
+    </div>
 
-<script>
+    <script>
+        let activeChannels = new Set();
 
-    let comps = {
-        dialog: document.querySelector('#dialog'),
-        message: document.querySelector('#controls #message'),
-        send: document.querySelector('#controls #send'),
-    };
-
-    let ws = new WebSocket('ws://localhost:8080/socket');
-    ws.onclose = () => console.log('closed');
-
-    comps.send.onclick = () => {
-        let msg = {
-            type: 'message',
-            data: comps.message.value,
-        };
-        ws.send(JSON.stringify(msg));
-        comps.message.value = '';
-    };
-
-    ws.onmessage = e => {
-        let msg = JSON.parse(e.data);
-        if (msg.type === 'ping') {
-            ws.send(JSON.stringify({type: 'pong'}));
-            return;
-        }
-
-        if (msg.type === 'channels') {
-            console.log(JSON.parse(msg.data));
-            JSON.parse(msg.data).forEach(channel => {
-                let li = document.createElement("li");
-                let a = document.createElement("a");
-                a.innerHTML = channel;
-                a.href = "#";
-                a.onclick = function(e){
-                    e.preventDefault();
-                    ws.send(JSON.stringify({type:'join',data: channel}))
-                }
-                li.appendChild(a);
-                document.getElementById("channels").appendChild(li);
+        function updateListActiveChannels() {
+            document.getElementById('active_channels').innerHTML = '';
+            activeChannels.forEach(channel => {
+                let opt = document.createElement('option');
+                opt.innerHTML = channel;
+                document.getElementById('active_channels').appendChild(opt);
             });
-        }
-        if (msg.type === 'message') {
-            let msgComponent = document.createElement('DIV');
-            msgComponent.innerText = msg.data;
-            comps.dialog.appendChild(msgComponent);
-        }
-    };
 
-    ws.onopen = () => {
-        console.log('connected');
-    };
+            if (activeChannels.size === 0) {
+                document.getElementById('controls').setAttribute('style', 'display: none');
+            } else {
+                document.getElementById('controls').setAttribute('style', '');
+            }
+        }
 
-</script>
+        let comps = {
+            dialog: document.querySelector('#dialog'),
+            message: document.querySelector('#controls #message'),
+            send: document.querySelector('#controls #send'),
+        };
+
+        let ws = new WebSocket('ws://localhost:8080/socket');
+        ws.onclose = () => console.log('closed');
+
+        comps.send.onclick = () => {
+            let list = document.getElementById('active_channels');
+            let msg = {
+                type: 'message',
+                channel: list.options[list.selectedIndex].value,
+                data: comps.message.value,
+            };
+            ws.send(JSON.stringify(msg));
+            comps.message.value = '';
+        };
+
+        ws.onmessage = e => {
+            let msg = JSON.parse(e.data);
+            if (msg.type === 'ping') {
+                ws.send(JSON.stringify({ type: 'pong' }));
+                return;
+            }
+
+            if (msg.type === 'channels') {
+                JSON.parse(msg.data).forEach(channel => {
+                    let li = document.createElement("li");
+                    let a = document.createElement("a");
+                    let cb = document.createElement('input');
+                    cb.type = 'checkbox'
+                    cb.onchange = function (e) {
+                        if (e.target.checked) {
+                            activeChannels.add(channel);
+                            ws.send(JSON.stringify({ type: 'join', channel: channel }));
+                        } else {
+                            activeChannels.delete(channel);
+                            ws.send(JSON.stringify({ type: 'leave', channel: channel }));
+                        }
+                        updateListActiveChannels();
+                    }
+                    let t = document.createTextNode(channel);
+                    li.appendChild(cb);
+                    li.appendChild(t);
+                    document.getElementById("channels").appendChild(li);
+                });
+            }
+
+            if (msg.type === 'message') {
+                let msgComponent = document.createElement('DIV');
+                msgComponent.innerText = msg.data;
+                comps.dialog.appendChild(msgComponent);
+            }
+        };
+
+        ws.onopen = () => {
+            console.log('connected');
+        };
+
+    </script>
 
 </body>
+
 </html>

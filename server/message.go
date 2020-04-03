@@ -14,10 +14,13 @@ const (
 	MTJoin MessageType = "join"
 	// MTChannels list of channels
 	MTChannels MessageType = "channels"
+	//MTLeave leave channel
+	MTLeave MessageType = "leave"
 )
 
 // Message is message struct
 type Message struct {
-	Type MessageType `json:"type"`
-	Data string      `json:"data,omitempty"`
+	Type    MessageType `json:"type"`
+	Data    string      `json:"data,omitempty"`
+	Channel string      `json:"channel,omitempty"`
 }
