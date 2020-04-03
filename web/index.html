@@ -6,6 +6,8 @@
 </head>
 <body>
 
+<div>Выберите канал:</div>
+<ul id="channels"></ul>
 <div id="dialog"></div>
 <div id="controls">
     <input type="text" id="message">
@@ -39,6 +41,21 @@
             return;
         }
 
+        if (msg.type === 'channels') {
+            console.log(JSON.parse(msg.data));
+            JSON.parse(msg.data).forEach(channel => {
+                let li = document.createElement("li");
+                let a = document.createElement("a");
+                a.innerHTML = channel;
+                a.href = "#";
+                a.onclick = function(e){
+                    e.preventDefault();
+                    ws.send(JSON.stringify({type:'join',data: channel}))
+                }
+                li.appendChild(a);
+                document.getElementById("channels").appendChild(li);
+            });
+        }
         if (msg.type === 'message') {
             let msgComponent = document.createElement('DIV');
             msgComponent.innerText = msg.data;

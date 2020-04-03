@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-//ApplyHandlers apply hadlers for server
+// ApplyHandlers apply hadlers for server
 func (serv *Server) ApplyHandlers() {
 	serv.router.Handle("/*", http.FileServer(http.Dir("./web")))
 	serv.router.Get("/socket", serv.socketHandler)
@@ -21,10 +22,14 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("websocket err: %v", err)
 	}
+	stopchan := make(chan string)
 
 	go func() {
 		for {
 			<-time.After(5 * time.Second)
+			if <-stopchan == "exit" {
+				break
+			}
 			msg := Message{
 				Type: MTPing,
 			}
@@ -35,18 +40,16 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	id := uuid.New().String()
-	serv.submutex.Lock()
-	serv.subscribers[id] = func(msg string) error {
-		m := Message{
-			Type: MTMessage,
-			Data: msg,
-		}
-		if err := ws.WriteJSON(m); err != nil {
-			log.Printf("ws msg fetch err: %v", err)
-		}
-		return nil
-	}
-	serv.submutex.Unlock()
+	user := NewUser(id, ws)
+	channels, _ := json.Marshal(serv.publisher.GetChannels())
+	ws.WriteJSON(Message{
+		Type: MTChannels,
+		Data: string(channels),
+	})
+	// serv.submutex.Lock()
+	// serv.subscribers[id] = user
+	// serv.channel.Subscribe(user)
+	// serv.submutex.Unlock()
 
 	for {
 		msg := Message{}
@@ -57,26 +60,34 @@ func (serv *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		if msg.Type == MTJoin {
+			serv.channels[msg.Data].Subscribe(user)
+		}
+
 		if msg.Type == MTPong {
 			continue
 		}
 
 		if msg.Type == MTMessage {
 			fmt.Println(msg.Data)
-			serv.submutex.Lock()
-			for _, sub := range serv.subscribers {
-				if err := sub(msg.Data); err != nil {
-					log.Fatalf("ws msg subs err: %v", err)
-				}
-			}
-			serv.submutex.Unlock()
+			// serv.submutex.Lock()
+			serv.publisher.Send(msg.Data)
+			// for _, sub := range serv.subscribers {
+			// 	if err := sub(msg.Data); err != nil {
+			// 		log.Fatalf("ws msg subs err: %v", err)
+			// 	}
+			// }
+			// serv.submutex.Unlock()
 		}
 	}
 
-	fmt.Println("CLOSED")
+	fmt.Println("User leaving...")
 	defer func() {
-		serv.submutex.Lock()
-		delete(serv.subscribers, id)
-		serv.submutex.Unlock()
+		// serv.submutex.Lock()
+		for _, v := range serv.channels {
+			v.UnSubscribe(user)
+		}
+		stopchan <- "exit"
+		// serv.submutex.Unlock()
 	}()
 }

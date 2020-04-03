@@ -1,18 +1,22 @@
 package server
 
-//MessageType is message type string
+// MessageType is message type string
 type MessageType string
 
 const (
-	//MTPing is meesage ping
+	// MTPing message ping
 	MTPing MessageType = "ping"
-	//MTPong is message pong
+	// MTPong message pong
 	MTPong MessageType = "pong"
-	//MTMessage is message
+	// MTMessage message
 	MTMessage MessageType = "message"
+	// MTJoin join message
+	MTJoin MessageType = "join"
+	// MTChannels list of channels
+	MTChannels MessageType = "channels"
 )
 
-//Message is message struct
+// Message is message struct
 type Message struct {
 	Type MessageType `json:"type"`
 	Data string      `json:"data,omitempty"`
