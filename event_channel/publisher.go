@@ -3,11 +3,13 @@ package event_channel
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type Channels map[string]*Channel
 
 type Publisher struct {
+	sync.Mutex
 	channels Channels
 }
 
@@ -18,7 +20,9 @@ func NewPublisher() *Publisher {
 }
 
 func (p *Publisher) AddChannel(name string, channel *Channel) {
+	p.Lock()
 	p.channels[name] = channel
+	p.Unlock()
 }
 
 func (p *Publisher) GetChannels() []string {
@@ -36,7 +40,9 @@ func (p *Publisher) DelChannel(name string) error {
 	if p.channels[name] == nil {
 		return errors.New("Channel not found: " + name)
 	}
+	p.Lock()
 	delete(p.channels, name)
+	p.Unlock()
 	return nil
 }
 
